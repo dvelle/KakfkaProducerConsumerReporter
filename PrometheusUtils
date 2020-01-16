@@ -1,0 +1,51 @@
+
+import java.util
+
+import io.prometheus.client.{Collector, Gauge}
+import org.apache.kafka.common.{Metric, MetricName}
+
+import scala.collection.JavaConverters._
+
+object PrometheusUtils {
+  def registerGauge(metric: util.Map.Entry[MetricName,_<:Metric]): Gauge =
+    Gauge
+      .build()
+      .name(formatMetricName(metric))
+      .help(helpOrDefault(metric.getKey.description()))
+      .labelNames(metricLabelsName(metric): _*)
+      .register()
+
+  def formatMetricName(metric: util.Map.Entry[MetricName,_<:Metric]): String = {
+    val base = metric.getKey.group() + "_" + metric.getKey().name()
+
+    if (metric.getKey.tags().size() > 0) {
+      Collector.sanitizeMetricName(base + "_" + metricLabelsName(metric).mkString("_"))
+    } else {
+      Collector.sanitizeMetricName(base)
+    }
+  }
+
+  def formatMetricNameWithLabels(metric: util.Map.Entry[MetricName,_<:Metric]): String = {
+    val base = metric.getKey().group() + "_" + metric.getKey().name()
+
+    if (metric.getKey().tags().size() > 0) {
+      Collector.sanitizeMetricName(base + "_" + metricLabelsName(metric).mkString("_") + "_" + metricLabelsValue(metric).mkString("_"))
+    } else {
+      Collector.sanitizeMetricName(base)
+    }
+  }
+
+  def metricLabelsName(metric: util.Map.Entry[MetricName,_<:Metric]): Array[String] =
+    metric.getKey().tags().asScala.keys.map(x => x.replace("-", "_")).toArray
+
+  def metricLabelsValue(metric: util.Map.Entry[MetricName,_<:Metric]): Array[String] =
+    metric.getKey().tags().asScala.values.toArray
+
+  def helpOrDefault(help: String): String =
+    if (help.length == 0) {
+      "N/A"
+    } else {
+      help
+    }
+
+}
