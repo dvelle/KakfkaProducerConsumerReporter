@@ -1,0 +1,59 @@
+import java.util
+
+import ProducerExample.producer
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import io.prometheus.client.CollectorRegistry
+import io.prometheus.client.dropwizard.DropwizardExports
+import org.apache.kafka.common.Metric
+
+import scala.collection.JavaConverters._
+
+object ConsumerExample extends App {
+
+  import java.util.Properties
+
+  val TOPIC="test"
+
+  val  props = new Properties()
+  props.put("bootstrap.servers", "localhost:9092")
+
+  props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+  props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+  props.put("group.id", "something")
+
+  val consumer = new KafkaConsumer[String, String](props)
+
+  consumer.subscribe(util.Collections.singletonList(TOPIC))
+
+
+  // Find the metrics you are interested in// Find the metrics you are interested in
+
+  var requestLatencyAvgMetric: Metric = null
+
+  import scala.collection.JavaConversions._
+
+  //specific
+
+  for (entry <- consumer.metrics.entrySet) {
+    if ("request-latency-avg" == entry.getKey.name) {
+      requestLatencyAvgMetric = entry.getValue
+
+      println(requestLatencyAvgMetric)
+    }
+  }
+
+  //ALL
+  for (entry <- consumer.metrics.entrySet) {
+    println(entry.getKey.name + " : " + entry.getValue.metricValue)
+  }
+
+
+
+
+  while(true){
+    val records=consumer.poll(100)
+    for (record<-records.asScala){
+      println(record)
+    }
+  }
+}
